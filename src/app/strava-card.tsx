@@ -87,8 +87,6 @@ interface Activity {
   readonly user: User;
 }
 
-// Initialize Mapbox
-mapboxgl.accessToken = 'pk.eyJ1IjoiY29saW5maXR6MzI4IiwiYSI6ImNrcTh5Ymp2dTA2dWsydXFtZzBsYnh2bzUifQ.4YFKWK-RJSVdIp15W9Fwfg';
 
 // Error boundary
 class MentionErrorBoundary extends React.Component<
@@ -720,7 +718,7 @@ const ActivityMap = memo(({
     if (!mapContainer.current) return;
 
     map.current = new mapboxgl.Map({
-      accessToken: 'pk.eyJ1IjoiY29saW5maXR6MzI4IiwiYSI6ImNtNm9kaGt4aDEzZGoybHB4YXl4bHJuc3oifQ.DWBhhwoEONM7DIy6n8TRAw',
+      accessToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: center,
