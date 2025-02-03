@@ -7,7 +7,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { sampleUsers } from './page';
+import { sampleUsers } from './data/sample-users';
 
 // Constants
 const ACTIVITY_TYPES = {
@@ -18,7 +18,10 @@ const ACTIVITY_TYPES = {
 } as const;
 
 const ACTIVITY_ICONS = {
-  RUN: 'https://static.vecteezy.com/system/resources/thumbnails/012/742/199/small/running-icon-free-vector.jpg'
+  [ACTIVITY_TYPES.RUN]: "https://static.vecteezy.com/system/resources/thumbnails/012/742/199/small/running-icon-free-vector.jpg",
+  [ACTIVITY_TYPES.BIKE]: "https://static.vecteezy.com/system/resources/thumbnails/000/551/126/small/bicycle_001-vector.jpg",
+  [ACTIVITY_TYPES.SWIM]: "https://static.vecteezy.com/system/resources/thumbnails/000/551/164/small/swim_001-vector.jpg",
+  [ACTIVITY_TYPES.OTHER]: "https://static.vecteezy.com/system/resources/thumbnails/000/551/164/small/other_001-vector.jpg"
 } as const;
 
 // Current user for kudos and comments
@@ -53,6 +56,7 @@ interface ActivityStats {
   readonly pace: number;
   readonly duration: number;
   readonly achievements: number;
+  readonly elevation: number;
 }
 
 interface Comment {
@@ -76,6 +80,7 @@ interface Activity {
     readonly pace: number;
     readonly duration: number;
     readonly achievements: number;
+    readonly elevation: number;
   };
   readonly kudosUsers: User[];
   readonly comments: Comment[];
@@ -455,11 +460,16 @@ const CommentInput = memo(({ onSubmit }: CommentInputProps): React.JSX.Element =
     const mentionPattern = allUsers.map(user => `(@${user.name})`).join('|');
     const regex = new RegExp(mentionPattern, 'g');
     const mentions = [];
-    let match;
+    let match: RegExpExecArray | null;
     while ((match = regex.exec(newText)) !== null) {
-      const userName = match[0].slice(1); // Remove @
-      const user = allUsers.find(u => `@${u.name}` === match[0]);
-      if (user) mentions.push(user);
+      if (match) {
+        // Get the matched name without @ if it exists
+        const matchedText = match[0];
+        const userName = matchedText.startsWith('@') ? matchedText.slice(1) : matchedText;
+        const mentionedUser = allUsers.find(user => `@${user.name}` === matchedText);
+        
+        if (mentionedUser) mentions.push(mentionedUser);
+      }
     }
     setCurrentMentions(mentions);
   };
@@ -624,41 +634,43 @@ const CommentText = memo(({ text, mentions = [] }: { text: string; mentions?: Us
   // Find all mentions in the text (both @Name and direct Name mentions)
   const mentionPattern = mentions.map(user => `(${user.name}|@${user.name})`).join('|');
   const regex = new RegExp(mentionPattern, 'g');
-  let match;
+  let match: RegExpExecArray | null;
   
   while ((match = regex.exec(text)) !== null) {
-    // Add the text before the mention
-    if (match.index > lastIndex) {
-      parts.push(
-        <span key={`text-${lastIndex}`}>
-          {text.slice(lastIndex, match.index)}
-        </span>
-      );
+    if (match) {
+      // Add the text before the mention
+      if (match.index > lastIndex) {
+        parts.push(
+          <span key={`text-${lastIndex}`}>
+            {text.slice(lastIndex, match.index)}
+          </span>
+        );
+      }
+      
+      // Get the matched name without @ if it exists
+      const matchedText = match[0];
+      const userName = matchedText.startsWith('@') ? matchedText.slice(1) : matchedText;
+      const mentionedUser = mentions.find(user => `@${user.name}` === matchedText);
+      
+      if (mentionedUser) {
+        parts.push(
+          <span 
+            key={`mention-${match.index}`} 
+            className="text-[#fc5200] font-bold hover:underline cursor-pointer"
+          >
+            {matchedText.startsWith('@') ? matchedText : `@${userName}`}
+          </span>
+        );
+      } else {
+        parts.push(
+          <span key={`text-${match.index}`}>
+            {matchedText}
+          </span>
+        );
+      }
+      
+      lastIndex = match.index + match[0].length;
     }
-    
-    // Get the matched name without @ if it exists
-    const matchedText = match[0];
-    const userName = matchedText.startsWith('@') ? matchedText.slice(1) : matchedText;
-    const mentionedUser = mentions.find(user => user.name === userName);
-    
-    if (mentionedUser) {
-      parts.push(
-        <span 
-          key={`mention-${match.index}`} 
-          className="text-[#fc5200] font-bold hover:underline cursor-pointer"
-        >
-          {matchedText.startsWith('@') ? matchedText : `@${userName}`}
-        </span>
-      );
-    } else {
-      parts.push(
-        <span key={`text-${match.index}`}>
-          {matchedText}
-        </span>
-      );
-    }
-    
-    lastIndex = match.index + match[0].length;
   }
   
   // Add any remaining text
@@ -701,33 +713,23 @@ const ActivityMap = memo(({
 }): React.JSX.Element => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const [center, setCenter] = useState<mapboxgl.LngLatLike>([-122.4194, 37.7749]); // San Francisco coordinates
+  const [zoom, setZoom] = useState(13);
 
   useEffect(() => {
-    if (!mapContainer.current || routeCoordinates.length === 0) return;
-
-    // Convert coordinates to [lng, lat] format for Mapbox
-    const coordinates = routeCoordinates.map(coord => [coord.lng, coord.lat] as [number, number]);
-
-    // Calculate the center point of the route
-    const bounds = coordinates.reduce((bounds, coord) => {
-      return bounds.extend(coord as [number, number]);
-    }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
-
-    const center = [
-      (bounds.getWest() + bounds.getEast()) / 2,
-      (bounds.getNorth() + bounds.getSouth()) / 2
-    ];
+    if (!mapContainer.current) return;
 
     map.current = new mapboxgl.Map({
+      accessToken: 'pk.eyJ1IjoiY29saW5maXR6Z2VyYWxkIiwiYSI6ImNscjRtMGN2YzBjOGYya3F3cHpnZmF0eWIifQ.BzLQJZN6cRkPx_qLsE2gjA',
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: center,
-      zoom: 13,
+      zoom: zoom,
       interactive,
       dragPan: interactive,
       dragRotate: interactive,
       scrollZoom: interactive,
-      touchZoom: interactive,
+      touchZoomRotate: interactive,
       doubleClickZoom: interactive,
       keyboard: interactive
     });
@@ -747,7 +749,7 @@ const ActivityMap = memo(({
           properties: {},
           geometry: {
             type: 'LineString',
-            coordinates: coordinates
+            coordinates: routeCoordinates.map(coord => [coord.lng, coord.lat] as [number, number])
           }
         }
       });
@@ -762,9 +764,15 @@ const ActivityMap = memo(({
         },
         paint: {
           'line-color': '#fc5200',
-          'line-width': 3
+          'line-width': 4
         }
       });
+
+      // Calculate bounds
+      const coordinates = routeCoordinates.map(coord => [coord.lng, coord.lat] as [number, number]);
+      const bounds = coordinates.reduce((bounds, coord) => {
+        return bounds.extend(coord);
+      }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
 
       // Fit the map to show the entire route with padding
       map.current.fitBounds(bounds, {
@@ -951,7 +959,7 @@ const ActivityCard = memo(({ activity }: { activity: Activity }) => {
 
           {/* Title */}
           <h2 className="text-xl font-bold mb-4 flex items-center group">
-            {activity.type === 'run' && (
+            {activity.type === ACTIVITY_TYPES.RUN && (
               <Timer className="w-5 h-5 mr-2 text-gray-600 group-hover:text-[#007FB6]" />
             )}
             <span className="group-hover:text-[#007FB6] transition-colors">

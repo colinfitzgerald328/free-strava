@@ -1,7 +1,7 @@
 "use client";
 import { useParams } from 'next/navigation';
 import { Activity, Container, ActivityMap } from '../../strava-card';
-import { sampleActivities } from '../../page';
+import { sampleActivities } from '../../data/sample-activities';
 import { useMemo } from 'react';
 import { ChevronLeft, BarChart2, TrendingUp, Clock, Trophy, MapPin, ArrowUp, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
