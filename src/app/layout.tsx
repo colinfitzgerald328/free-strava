@@ -35,7 +35,7 @@ export default function RootLayout({
         <title>Strava Activity</title>
         <meta name="description" content="Strava activity card" />
       </head>
-      <body className={`font-sans antialiased`}>{children}</body>
+      <body className={`font-sans antialiased bg-gray-100`}>{children}</body>
     </html>
   );
 }
