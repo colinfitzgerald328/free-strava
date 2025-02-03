@@ -5,6 +5,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --strava-orange: #fc5200;
+  --strava-orange-dark: #e34800;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,4 +20,80 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-100;
+  }
+}
+
+/* Strava-specific styles */
+.strava-button {
+  @apply bg-[#fc5200] text-white rounded-md px-4 py-2 hover:bg-[#e34800] transition-colors;
+}
+
+.strava-link {
+  @apply text-[#fc5200] hover:text-[#e34800] transition-colors;
+}
+
+/* Custom scrollbar for the comments section */
+.comments-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.comments-section::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+.comments-section::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+/* Map container styles */
+.mapboxgl-map {
+  @apply rounded-lg overflow-hidden;
+}
+
+/* Activity stats animations */
+.stat-value {
+  @apply transition-all duration-200;
+}
+
+.stat-value:hover {
+  @apply transform scale-105;
+}
+
+/* Kudos button animation */
+.kudos-button {
+  @apply transition-all duration-200;
+}
+
+.kudos-button:hover {
+  @apply transform scale-110;
+}
+
+@keyframes kudosJump {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.kudos-jump {
+  animation: kudosJump 0.3s ease-in-out;
+}
+
+/* Achievement trophy animation */
+.achievement-trophy {
+  @apply transition-all duration-300;
+}
+
+.achievement-trophy:hover {
+  @apply transform rotate-12 scale-110;
 }
