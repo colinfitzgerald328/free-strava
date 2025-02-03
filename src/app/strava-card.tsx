@@ -720,7 +720,7 @@ const ActivityMap = memo(({
     if (!mapContainer.current) return;
 
     map.current = new mapboxgl.Map({
-      accessToken: 'pk.eyJ1IjoiY29saW5maXR6Z2VyYWxkIiwiYSI6ImNscjRtMGN2YzBjOGYya3F3cHpnZmF0eWIifQ.BzLQJZN6cRkPx_qLsE2gjA',
+      accessToken: 'pk.eyJ1IjoiY29saW5maXR6MzI4IiwiYSI6ImNtNm9kaGt4aDEzZGoybHB4YXl4bHJuc3oifQ.DWBhhwoEONM7DIy6n8TRAw',
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: center,
